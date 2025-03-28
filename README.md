@@ -1,4 +1,4 @@
-# ZK
+# vim-zk
 
 Yet another Zettelkasten for Vim
 
