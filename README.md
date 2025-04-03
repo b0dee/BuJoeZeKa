@@ -8,10 +8,9 @@ I've written this in pure vimscript (and will write a cli utility to go with)
 
 All of this is only supporting Linux as I can use WSL.
 
-```warning
-Warning: This plugin is still under heavy design and development changes and may
-not be fully tested.
-```
+> [!WARNING]
+> Warning: This plugin is still under heavy design and development changes and may
+> not be fully tested.
 
 ## Why
 
