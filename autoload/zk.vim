@@ -1,25 +1,68 @@
+if exists('g:zk_autoloaded') | finish | endif
+let g:zk_autoloaded = 1
+
 function! s:joinpath(...) abort
   return fnameescape(substitute(join(a:000, '/'), "//", "/", "g"))
 endfunction
 
-function! zk#Zk(bang,filename) abort 
-  " Check if filename has extension, add default if not
-  let l:filename = a:filename
-  if a:filename !~ '\.\w\+$' | let l:filename .= '.' . g:zk_default_ext | endif
-  " We don't create missing intermediate directories in case they don't save file
-  " TODO: Add BuffWritePre autocommand to create missing directories in g:zk_root
-  " using path of current file 
-  call execute(':e' . (a:bang ? '! ' : ' ')  . s:joinpath(g:zk_root, l:filename))
-  if index(keys(g:zk_prefix_lookup),&filetype) >= 0 
-    let l:prefix = g:zk_prefix_lookup[&filetype]
-  else
-    let l:prefix = g:zk_prefix_lookup['default']
-  endif
-  let l:title = split(split(l:filename, '/')[-1], '\.')[-2] 
+function! s:format_title(filename, prefix) abort
+  " Format title
+  let l:title = split(split(a:filename, '/')[-1], '\.')[-2] 
   let l:title = join(split(l:title, '_'), ' ')
   let l:title = join(split(l:title, '-'), ' ')
-  let l:title = l:prefix . " " . l:title
-  return append(0,l:title)
+  let l:title = substitute(l:title, '\( *[a-z]\)\([a-z]\+\)\( \|$\)', '\U\1\L\2\3','g')
+  let l:title = a:prefix . l:title
+  return l:title
+endfunction
+
+function! s:append(filepath, message, tofile, linenum) abort
+  if !a:tofile
+    return append(a:linenum, a:message)
+  else
+    return writefile(a:message, a:filepath, 'a')
+  endif
+endfunction
+
+function! zk#Zk(bang,range_start, range_end, filename,...) abort 
+  " Strip leading slash
+  let l:filename = a:filename[0] == '/' ? a:filename[1:] : a:filename
+  " Check if filename has extension, add default if not
+  if a:filename !~ '\.\w\+$' | let l:filename .= '.' . g:zk_default_ext | endif
+  let l:filepath = s:joinpath(g:zk_root, l:filename)
+  let l:newfile = !filereadable(l:filepath)
+
+  " Unfortunately, as Vim passes current line as default for empty range 
+  " we are not able to write a single line range
+  " Do this before the execution of :e as it changes buffer it gets lines from
+  let l:quote = []
+  if a:range_start != a:range_end
+    let l:quote = ['']
+    for line in getline(a:range_start, a:range_end)
+      let l:quote = add(l:quote, '> ' . line)
+    endfor
+  endif
+
+  if !a:bang
+    call execute(':e' . l:filepath)
+  endif
+  
+  " Exit early if possible, user only wanted to open file
+  if !l:newfile && len(a:000) == 0 && a:range_start == a:range_end| return | endif
+
+  let l:prefix = index(keys(g:zk_prefix_lookup),&filetype) >= 0 ? g:zk_prefix_lookup[&filetype]:  g:zk_prefix_lookup['default']
+
+  if l:newfile && g:zk_auto_title
+    let l:title = s:format_title(l:filename, l:prefix)
+    call s:append(l:filepath,[l:title, ''], a:bang, 0)
+  endif
+
+  " Exit early if possible, user did not provide any message or range to write
+  if len(a:000) == 0 && a:range_start == a:range_end | return | endif
+
+  let l:message = extend([join(a:000, ' ')], l:quote)
+
+  return s:append(l:filepath, l:message, a:bang,line('$'))
+
 endfunction
 
 function! zk#Ln(bang, target, link_name) abort
@@ -58,6 +101,24 @@ endfunction
 function! zk#Fzf(bang,...) abort
   " Use fzf to open interactive search
   return fzf#run(fzf#wrap({'source': 'find ' . fnameescape(g:zk_root) . ' -type f' . (len(a:000) > 0 ? '-name "' . join(a:000, ' ') . '"': '') }, a:bang))
+endfunction
+
+function! zk#Ex(bang, path) abort
+  " execute Explore on g:zk_root joined with path
+  return execute(':Explore' . (a:bang ? '!' : '') . ' ' . s:joinpath(g:zk_root, a:path))
+endfunction
+
+function! zk#CompleteListFile(arglead, cmdline, cursorpos) abort
+  let l:filter = a:arglead == '' ? '*' : '*'.a:arglead.'*'
+  let l:matches = globpath(g:zk_root,'**/'.l:filter, 0, 1)
+  let l:results = []
+  for result in l:matches
+    " Strip zk root
+    "if !filereadable(result) | continue | endif
+    let result = substitute(result, expand(g:zk_root) . '/', '', '')
+    let l:results = add(l:results, result)
+  endfor
+  return l:results
 endfunction
 
 function! zk#Link(bang,...) abort
