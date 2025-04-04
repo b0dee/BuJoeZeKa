@@ -22,7 +22,7 @@ systems.
 The "purist" Zettelkasten approach is to have a single zk to manage everything,
 so everything exists inside a single zk_root directory rather than a sqlite file. I
 don't impose any ideology, you can create
-"notebooks"/"categories"/"<replace-organisation-term-here>" directories as you see
+"notebooks"/"categories"/"\<replace-organisation-term-here\>" directories as you see
 fit. Since we are working with the filesystem, we have the ability to symlink to existing files/directories, immediately
 incorperating them to the Zettlecastle. See some [drawbacks](#drawbacks) while I
 work out/ of this design.
