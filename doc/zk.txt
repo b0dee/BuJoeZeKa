@@ -4,19 +4,19 @@ CONTENTS                                            *zk.vim-contents*
 
 1. Commands                         |commands|
 2. Settings                         |settings|
-3. Mappings                         |mappings|
-4. API                              |api|
+3. API                              |api|
 
 =========================================================================
 1. Commands                                         *commands*
 
                                                     *:Zk*
-:Zk {filepath}      Create or open {filepath} relative to g:zk_root
+:Zk {filename}      Create or open {filename} relative to g:zk_root. 
+                    {filename} can contain '/'. Missing directories will not be made
+                    until either a BufWrite* or FileWritePre event is triggered, 
+                    this only applies when in g:zk_root.
 
-                                                    *:ZkLink*
-:ZkLink[!] [target] [link_name] [flags]
-                    Create link in current file to another file. Optional bang
-                    launches interactive.
+                    {filename} does not need to have a file extension, a default
+                    one is added if this is omitted - see *g:zk_default_ext*.
 
                                                     *:ZkLn*
 :ZkLn[!] {target} {link_name} [flags]
@@ -33,6 +33,15 @@ CONTENTS                                            *zk.vim-contents*
 :ZkMv[!] {source} {target}
                     Move source to target within g:zk_root. Use optional bang
                     '!' to force the action.
+                    Source is absolute path to file, target is relative to 
+                    g:zk_root.
+                    To move a file relatively within g:zk_root, use :ZkRename
+
+                                                    *:ZkRename*
+:ZkRename[!] {source} {target}
+                    Rename source to target within g:zk_root. Use optional bang
+                    '!' to force the action.
+                    Both source and target are relative within g:zk_root.
 
                                                     *:ZkRg*
 :ZkRg[!] [arguments]
@@ -40,24 +49,23 @@ CONTENTS                                            *zk.vim-contents*
                     [arguments] direct to the binary. Opens, in full screen if
                     optional bang '!' provided, an FZF interactive window with
                     the results.
-
-                                                    *:ZkGrep*
-:ZkGrep[!] [arguments]
-                    The builtin alternative for |:ZkRg|. Uses lgrep to
-                    populate location-list. Use vim lgrep syntax for
-                    arguments. Optional bang takes you to first result.
+                    Running without arguments shows all files in
+                    interactive mode.
 
                                                     *:ZkFzf*
 :ZkFzf[!] [search]
                     Search filenames for [search] with FZF, using g:zk_root as
                     a base. Opens, in full screen if optional bang '!'
                     provided, an interactive FZF window with results.
+                    Running without arguments shows all files in
+                    interactive mode.
 
-                                                    *:ZkFind*
-:ZkFind[!] [arguments]
-                    The builtin alternative for ZkFzf. Uses find binary to 
-                    populate location list with results. Use find syntax for
-                    arguments. Optional bang takes you to first result.
+                                                    *:ZkLink*
+:ZkLink[!] [target] [link_name] [flags]
+                    Create link in current file to another file. Optional bang
+                    launches interactive.
+                    **NOT IMPLEMENTED**
+
 
 =========================================================================
 2. Settings                                         *settings*
@@ -81,12 +89,13 @@ g:zk_auto_title_replacement_regex
       Replace with spaces any occurances of pattern in filename when inserting
       title.
 
-=========================================================================
-3. Mappings                                         *mappings*
+g:zk_default_ext   string (default '.md')           *g:zk_default_ext*
+      
+      Default extension to use when {filename} argument to Zk has extension
+      omitted.
 
-
 =========================================================================
-4. API                                              *api*
+3. API                                              *api*
 
 See autoload/zk.vim as it is a very lightweight and simple API. Creating your 
 own extensions should be easy enough, see example below.

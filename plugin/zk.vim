@@ -7,7 +7,13 @@ let g:loaded_zk = 1
 let s:zk_vars = {
 \ 'zk_root': $HOME.'/.zk',
 \ 'zk_auto_title': v:true,
-\ 'zk_auto_title_replacement_regex': '_'
+\ 'zk_auto_title_replacement_regex': '_',
+\ 'zk_default_ext': 'md',
+\ 'zk_prefix_lookup': {
+\   'vim': '" ',
+\   'c': '// ',
+\   'default': '# ',
+\ }
 \ }
 
 " Set default variables
@@ -17,11 +23,17 @@ for [key, value] in items(s:zk_vars)
   endif
 endfor
 
-command! -bang -nargs=+ Zk      call execute(':e ' . fnameescape(g:zk_root . '/' . <q-args>) )
-command! -bang -nargs=* ZkLink  call execute(':e ' . fnameescape(g:zk_root . '/' . <q-args>))
-command! -bang -nargs=* ZkLn    call execute(':e ' . fnameescape(g:zk_root . '/' . <q-args>))
-command! -bang -nargs=+ ZkGrep  call execute(':lhelpgrep! -rni ' . <f-args> . ' ' . fnameescape(g:zk_root))
-command! -bang -nargs=* ZkRg    call fzf#vim#grep('rg --column --line-number --no-heading --color=always --smart-case '.fzf#shellescape(<q-args>) . ' ' . g:zk_root, fzf#vim#with_preview(), <bang>0)
-command! -bang -nargs=* ZkFind  call execute(':lexpr! ' . system('find ' . fnameescape(g:zk_root) . ' -type f -name "' . <q-args> . '"')
-command! -nargs=+       ZkMkdir call zk#Mkdir(<q-args>)
-command! -bang -nargs=+ ZkMv    call execute(':e ' . fnameescape(g:zk_root . '/' . <q-args>) )
+augroup zk
+  autocmd! 
+  " Create intermediate directories on write when under g:zk_root
+  execute "autocmd BufWrite,BufWritePre,FileWritePre " . g:zk_root . "/* call zk#Mkdir(fnamemodify(expand('%'), ':p:h'))"
+augroup END
+
+command! -nargs=+ -bang Zk       call zk#Zk(<bang>0, <q-args>)
+command! -nargs=+ -bang ZkLn     call zk#Ln(<bang>0, <f-args>)
+command! -nargs=* -bang ZkRg     call zk#Rg(<bang>0, <f-args>)
+command! -nargs=* -bang ZkFzf    call zk#Fzf(<bang>0, <f-args>)
+command! -nargs=+       ZkMkdir  call zk#Mkdir(<q-args>)
+command! -nargs=+ -bang ZkMv     call zk#Mv(<bang>0, <f-args>)
+command! -nargs=+ -bang ZkRename call zk#Rename(<bang>0, <f-args>)
+command! -nargs=* -bang ZkLink   call zk#Link(<bang>0, <f-args>)
