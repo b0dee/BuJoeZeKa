@@ -1,42 +1,47 @@
 # zk.vim
 
-Yet another Zettelkasten for Vim
+Yet another [Zettelkasten](https://zettelkasten.de) for Vim
 
-No, this one isn't a wrapper for [zk](https://github.com/zk-org/zk), it doesn't use the zk binary.
+No, this one isn't a wrapper for the [zk](https://github.com/zk-org/zk) binary.
 
-I've written this in pure vimscript (and will write a cli utility to go with)
+This is my own Zettelkasten implementation, written in pure vimscript, a cli companion is being made [here](https://github.com/b0dee/zk.sh).
 
-All of this is only supporting Linux as I can use WSL.
+> [!NOTE]
+> All of this is only supporting Linux (not handling Windows paths, binaries etc.) as I can use WSL. If you want to make it
+> Windows compatible, feel free.
 
-> [!WARNING]
-> Warning: This plugin is still under heavy design and development changes and may
-> not be fully tested.
+
+## Core Principles
+
+1. [x] Simple - in design and use
+2. [x] Flexible - No enforcement of ideology, use it how _you_ want to
+3. [x] Compatible - Easy to adopt and migrate to
+4. [x] Fast - Rapid entry
+5. [x] Fun - Remove blockers from all areas of note taking
 
 ## Why
 
-Wanted a personalised one. The zk binary organises everything using a sqlite file,
-which has many benefits, but I feel mine solves these with better design choices
-to allow for better searching, tagging, linking and integrating with existing
-systems.
+Wanted a personalised one. I've tried ([and made plugins
+for](https://github.com/b0dee/vim-bujo)) other note taking
+methods, but Zettelkasten is the soundest I've come across.
 
-The "purist" Zettelkasten approach is to have a single zk to manage everything,
-so everything exists inside a single zk_root directory rather than a sqlite file. I
-don't impose any ideology, you can create
-"notebooks"/"categories"/"\<replace-organisation-term-here\>" directories as you see
-fit. Since we are working with the filesystem, we have the ability to symlink to existing files/directories, immediately
-incorperating them to the Zettlecastle. See some [drawbacks](#drawbacks) while I
-work out/ of this design.
+I am a fan of simplicity. I firmly believe, when done correctly, it produces
+the least obtrusve and most flexible way, allowing for easy extension and
+customisation (totally not because I'm lazy!).
 
-## Drawbacks
+## Design
 
-tbd...
+Everything exists inside a single zk_root directory.  This makes searching and
+tagging easier. I don't impose any ideology either, you can (but dont't have to)
+create "notebooks"/ "categories"/ "\<replace-organisation-term-here\>"
+directories as you see fit. Since we are working with the filesystem, we have
+the ability to symlink to existing files/directories, immediately incorperating
+them to the Zettelkasten.
 
 ## Dependencies
 
-You _can_ get by without them, but life is much better with
-
-* [FZF](https://github.com/junegunn/fzf.vim) (ofc requires [FZF](https://github.com/junegunn/fzf) binary)
-* [RipGrep](https://github.com/jremmen/vim-ripgrep) (ofc requires [RipGrep](https://github.com/BurntSushi/ripgrep) binary)
+* [FZF.vim](https://github.com/junegunn/fzf.vim) (ofc requires [FZF](https://github.com/junegunn/fzf) binary)
+* [RipGrep](https://github.com/BurntSushi/ripgrep)
 
 ## Setup
 
@@ -46,57 +51,57 @@ If you use vim-plug, in your .vimrc
 Plug 'b0dee/zk.vim'
 ```
 
+Configure g:zk_root to your liking, the default is `~/.zk`
+
+> [!IMPORTANT]
+> You *MUST* relaunch Vim after changing g:zk_root for the autocmds to pick it
+> up. They're defned in plugin/zk.vim which is loaded on Vim startup
+
 The source your .vimrc and run `:PlugInstall`
 
 ## Usage
 
+### Note Taking
+
+The primary interface is the `:Zk` command, which will create or open a file.
+
 ```vimhelp
-*zk.vim* Yet another Zettelkasten plugin for Vim
-
-CONTENTS                                            *zk.vim-contents* 
-
-1. Commands                         |commands|
-2. Settings                         |settings|
-3. API                              |api|
-
-=========================================================================
-1. Commands                                         *commands*
-
-                                                    *:Zk*
-:Zk {filename}      Create or open {filename} relative to g:zk_root. 
+:[range]Zk[!] {filename} [msg] 
+                    Create or open {filename} relative to *g:zk_root*. Provided
                     {filename} can contain '/'. Missing directories will not be made
                     until either a BufWrite* or FileWritePre event is triggered, 
-                    this only applies when in g:zk_root.
+                    this only applies when current buffer is in g:zk_root.
 
                     {filename} does not need to have a file extension, a default
-                    one is added if this is omitted - see *g:zk_default_ext*.
+                    one is added if this is omitted - see |g:zk_default_ext|.
 
-                                                    *:ZkLn*
-:ZkLn[!] {target} {link_name} [flags]
-                    Create symlink to target using new link link_name. 
-                    Uses ln API under the hood with flags appended to command. 
-                    Creates any missing parent directories.
-                    Provide optional bang '!' to force action.
+                    If it is a new file and *g:zk_auto_title* is true it
+                    automatically inserts a title. 
 
-                                                    *:ZkMkdir*
-:ZkMkdir {path}     Create directory structure relative to g:zk_root.
-                    Any intermediate directories in {path} are created (-p).
+                    If a [msg] is provided it is appended to the file without any
+                    prefix, you do not need to use quotes, everything after
+                    the filename is joined as a single string.
 
-                                                    *:ZkMv*
-:ZkMv[!] {source} {target}
-                    Move source to target within g:zk_root. Use optional bang
-                    '!' to force the action.
-                    Source is absolute path to file, target is relative to 
-                    g:zk_root.
-                    To move a file relatively within g:zk_root, use :ZkRename
+                    If [range] is provided, the selection range is appended as a 
+                    quoteblock after the [msg], if it was provided, with an
+                    empty line between.
 
-                                                    *:ZkRename*
-:ZkRename[!] {source} {target}
-                    Rename source to target within g:zk_root. Use optional bang
-                    '!' to force the action.
-                    Both source and target are relative within g:zk_root.
+                    It is not possible to have a single line selection range.
 
-                                                    *:ZkRg*
+                    Providing optional bang '!' to the command will skip 
+                    opening {filename}, [range] and [msg] will be written to
+                    the file as normal (rapid entry).
+```
+
+### Searcing
+
+All searching commands launch an interactive FZF window.
+
+#### Content Search
+
+Searching through files is done with `:ZkRg`.
+
+```vimhelp
 :ZkRg[!] [arguments]
                     Search with ripgrep, using g:zk_root as base, passing
                     [arguments] direct to the binary. Opens, in full screen if
@@ -104,64 +109,32 @@ CONTENTS                                            *zk.vim-contents*
                     the results.
                     Running without arguments shows all files in
                     interactive mode.
+```
 
-                                                    *:ZkFzf*
+#### File Name Search
+
+Searching through file names is done with `:ZkFzf`
+
+```vimhelp
 :ZkFzf[!] [search]
                     Search filenames for [search] with FZF, using g:zk_root as
                     a base. Opens, in full screen if optional bang '!'
                     provided, an interactive FZF window with results.
                     Running without arguments shows all files in
                     interactive mode.
-
-                                                    *:ZkLink*
-:ZkLink[!] [target] [link_name] [flags]
-                    Create link in current file to another file. Optional bang
-                    launches interactive.
-                    **NOT IMPLEMENTED**
-
-
-=========================================================================
-2. Settings                                         *settings*
-
-                                                    *g:zk_root*
-g:zk_root          string (default $HOME/.zk) 
-
-      The variable defining zk root
-
-                                                    *g:zk_auto_title*
-g:zk_auto_title    boolean (default v:true)         
-      
-      Boolean to control if new files automatically get header inserted.
-      There is a lookup table of extension by prefix s:comment_prefix in
-      autoload/zk.vim.
-
-                                                    *g:zk_auto_title_replacement_regex*
-g:zk_auto_title_replacement_regex    
-                    string (default '_')         
-      
-      Replace with spaces any occurances of pattern in filename when inserting
-      title.
-
-g:zk_default_ext   string (default '.md')           *g:zk_default_ext*
-      
-      Default extension to use when {filename} argument to Zk has extension
-      omitted.
-
-=========================================================================
-3. API                                              *api*
-
-See autoload/zk.vim as it is a very lightweight and simple API. Creating your 
-own extensions should be easy enough, see example below.
-
-Create your own `:Journal` command to open a daily journal organised within a Journal
-directory: >
-      :command! -nargs=* Journal call zk#Zk(0,strftime("journals/%Y-%m-%d.txt"))
-`:Journal` command to open a daily journal organised within a Journal
-directory: >
-      :command! -nargs=* Journal call zk#Zk(0,strftime("journals/%Y-%m-%d.txt"))
-
 ```
 
-## TODO
+### Settings
 
-* Custom completion function for paths
+Customisable settings
+
+```vim
+let g:zk_root = '~/MyZettelkasten'  " Default is '$HOME/.zk'
+let g:zk_default_ext = 'txt'        " Extension without dot. Default is 'md'
+let g:zk_auto_title = v:false       " Default is true
+let g:zk_prefix_lookup = {          " Extends and overwrites default
+\  '<ext>': '<prefix><space>'       " <ext> is without dot, i.e. "asm", include space as part of prefix
+\ }
+```
+
+See vim help doc for more info.

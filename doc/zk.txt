@@ -9,21 +9,42 @@ CONTENTS                                            *zk.vim-contents*
 =========================================================================
 1. Commands                                         *commands*
 
+Commands have custom completion where sensible. This is unfortunately lacking
+in some areas (i.e. completion of paths like '~/' or '/blah').
+
                                                     *:Zk*
-:Zk {filename}      Create or open {filename} relative to g:zk_root. 
+:[range]Zk[!] {filename} [msg] 
+                    Create or open {filename} relative to *g:zk_root*. Provided
                     {filename} can contain '/'. Missing directories will not be made
                     until either a BufWrite* or FileWritePre event is triggered, 
-                    this only applies when in g:zk_root.
+                    this only applies when current buffer is in g:zk_root.
 
                     {filename} does not need to have a file extension, a default
-                    one is added if this is omitted - see *g:zk_default_ext*.
+                    one is added if this is omitted - see |g:zk_default_ext|.
+
+                    If it is a new file and *g:zk_auto_title* is true it
+                    automatically inserts a title. 
+
+                    If a [msg] is provided it is appended to the file without any
+                    prefix, you do not need to use quotes, everything after
+                    the filename is joined as a single string.
+
+                    If [range] is provided, the selection range is appended as a 
+                    quoteblock after the [msg], if it was provided, with an
+                    empty line between.
+
+                    It is not possible to have a single line selection range.
+
+                    Providing optional bang '!' to the command will skip 
+                    opening {filename}, [range] and [msg] will be written to
+                    the file as normal (rapid entry).
 
                                                     *:ZkLn*
 :ZkLn[!] {target} {link_name} [flags]
                     Create symlink to target using new link link_name. 
                     Uses ln API under the hood with flags appended to command. 
                     Creates any missing parent directories.
-                    Provide optional bang '!' to force action.
+                    Optional bang '!' opens {link_name} for editing.
 
                                                     *:ZkMkdir*
 :ZkMkdir {path}     Create directory structure relative to g:zk_root.
@@ -36,6 +57,13 @@ CONTENTS                                            *zk.vim-contents*
                     Source is absolute path to file, target is relative to 
                     g:zk_root.
                     To move a file relatively within g:zk_root, use :ZkRename
+
+                                                    *:ZkEx[plore]*
+:ZkEx[plore][!] {path}
+                    Wrapper to netrw Explore command starting in g:zk_root. If
+                    {path} is provided, it is appended to g:zk_root starting
+                    Explore in the relevant directory. Optional bang '!' is
+                    forwarded to Explore, creating horizontal split.
 
                                                     *:ZkRename*
 :ZkRename[!] {source} {target}
@@ -60,13 +88,6 @@ CONTENTS                                            *zk.vim-contents*
                     Running without arguments shows all files in
                     interactive mode.
 
-                                                    *:ZkLink*
-:ZkLink[!] [target] [link_name] [flags]
-                    Create link in current file to another file. Optional bang
-                    launches interactive.
-                    **NOT IMPLEMENTED**
-
-
 =========================================================================
 2. Settings                                         *settings*
 
@@ -75,6 +96,9 @@ g:zk_root          string (default $HOME/.zk)
 
       The variable defining zk root
 
+      IMPORTANT! If you change this you must relaunch Vim to apply the changes
+      to the autocmd group
+
                                                     *g:zk_auto_title*
 g:zk_auto_title    boolean (default v:true)         
       
@@ -82,25 +106,39 @@ g:zk_auto_title    boolean (default v:true)
       There is a lookup table of extension by prefix s:comment_prefix in
       autoload/zk.vim.
 
-                                                    *g:zk_auto_title_replacement_regex*
-g:zk_auto_title_replacement_regex    
-                    string (default '_')         
-      
-      Replace with spaces any occurances of pattern in filename when inserting
-      title.
-
 g:zk_default_ext   string (default '.md')           *g:zk_default_ext*
       
       Default extension to use when {filename} argument to Zk has extension
       omitted.
 
+                                                    *g:zk_prefix_lookup*
+g:zk_prefix_lookup dictionary (default - see plugin/zk.vim)
+
+      Leaving out default as will probably change until fully fleshed out,
+      also too long to leave here. g:zk_prefix_lookup is never actually set,
+      an internal script (s:) variable is used with g:zk_prefix_lookup
+      extending the existing set, overwriting any existing values defined in
+      both.
+
+                                                    *g:zk_auto_title_regex*
+g:zk_auto_title_regex
+                   string (default '[_-]')         
+      
+      Replace with spaces any occurances of pattern in filename when inserting
+      title.
+      The variable is passed directly to substitute so uses Vim regex.
+
 =========================================================================
 3. API                                              *api*
+
 
 See autoload/zk.vim as it is a very lightweight and simple API. Creating your 
 own extensions should be easy enough, see example below.
 
 Create your own `:Journal` command to open a daily journal organised within a Journal
 directory: >
-      :command! -nargs=* Journal call zk#Zk(0,strftime("journals/%Y-%m-%d.txt"))
+      :command! -nargs=* Journal call zk#zk(0,0,0,strftime("journal_%Y-%m-%d.txt"))
+      
+And if you want to log the time each time you call it:
+      :command! -nargs=* Journal call zk#zk(0,0,0,strftime("journal_%Y-%m-%d.txt"), strftime('@%H:%M'))
 
